@@ -12,20 +12,30 @@
   .abstract { font-size: 9.5pt; font-weight: bold; text-align: justify; margin: 0 0 6pt; }
   .abstract i { font-weight: bold; }
   .keywords { font-size: 9.5pt; font-style: italic; margin-bottom: 12pt; }
-  h2 { font-size: 11pt; font-variant: small-caps; text-align: center; margin: 14pt 0 6pt; letter-spacing: .5pt; }
-  h3 { font-size: 10.5pt; font-style: italic; font-weight: normal; margin: 9pt 0 4pt; }
+  h2 { break-after: avoid; font-size: 11pt; font-variant: small-caps; text-align: center; margin: 14pt 0 6pt; letter-spacing: .5pt; }
+  h3 { break-after: avoid; font-size: 10.5pt; font-style: italic; font-weight: normal; margin: 9pt 0 4pt; }
   p { text-align: justify; margin: 0 0 6pt; }
-  table { border-collapse: collapse; width: 100%; font-size: 9pt; margin: 6pt 0 4pt; }
+  table { page-break-inside: avoid; border-collapse: collapse; width: 100%; font-size: 9pt; margin: 6pt 0 4pt; }
   th, td { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3pt 5pt; text-align: left; vertical-align: top; }
   th { font-variant: small-caps; }
-  .cap { text-align: center; font-size: 8.5pt; font-variant: small-caps; margin-bottom: 8pt; }
+  .cap { break-before: avoid; text-align: center; font-size: 8.5pt; font-variant: small-caps; margin-bottom: 8pt; }
   code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 8.3pt; }
   pre { background: #f6f6f6; padding: 6pt; border: 1px solid #ddd; white-space: pre-wrap; }
   .fig { text-align: center; margin: 6pt 0; page-break-inside: avoid; }
   .todo { border: 1px dashed #b00; color: #b00; padding: 18pt; text-align: center; font-family: sans-serif; font-size: 9pt; margin: 4pt 0; }
   ol.refs { font-size: 9pt; padding-left: 18pt; }
   ol.refs li { margin-bottom: 3pt; }
-  .links { text-align: center; font-size: 9.5pt; margin-bottom: 10pt; }
+  .links { text-align: center; font-size: 9.5pt; margin-bottom: 10pt; line-height: 1.6; }
+  .links a { color: #1a0dab; }
+  .pending { background: #fff3cd; padding: 1pt 4pt; border-radius: 3pt; }
+  .shots { display: flex; gap: 6mm; justify-content: center; margin: 6pt 0 2pt; page-break-inside: avoid; }
+  .shot { width: 52mm; text-align: center; font-size: 8.3pt; }
+  .shot img { width: 52mm; border: 1px solid #ccc; border-radius: 6pt; display: block; margin-bottom: 3pt; }
+  .shot b { font-variant: small-caps; }
+  .notes { font-size: 9pt; margin: 2pt 0 8pt; padding-left: 14pt; }
+  .notes li { margin-bottom: 2pt; }
+  .avoid { page-break-inside: avoid; }
+  h2.appendix { page-break-before: always; }
 </style>
 </head>
 <body>
@@ -33,7 +43,8 @@
 <h1>CampusFix: A Real-Time, Role-Based Campus Incident Reporting App Built with Flutter and Firebase</h1>
 <div class="authors">Mugisha Moses · African Leadership University · m.mugisha@alustudent.com</div>
 <div class="links">
-  GitHub repository: <b>https://github.com/mugishamoses/campusfix-incident-reporting-app</b> &nbsp;·&nbsp; Video demonstration: <b>[ADD LINK]</b>
+  GitHub repository: <a href="https://github.com/mugishamoses/campusfix-incident-reporting-app">https://github.com/mugishamoses/campusfix-incident-reporting-app</a><br>
+  Video demonstration (7–10 min): <span class="pending"><b>[VIDEO LINK]</b></span>
 </div>
 
 <p class="abstract"><i>Abstract</i>—Broken facilities, water and power outages and safety hazards on campus are usually reported informally, so students cannot tell whether anyone acted and staff cannot prioritise. CampusFix is a Flutter mobile application backed by Firebase that lets verified students report incidents with a category, description, location and optional photo, and follow each report through a four-stage lifecycle (Submitted → In Review → In Progress → Resolved) in real time. Authorised staff triage a priority-sorted queue, change status with notes, set priority and hide abusive reports. The app uses a layered architecture (UI, logic, data) with Riverpod for state management, Cloud Firestore streams for live updates, and server-side security rules for role-based access control. Rules are verified with 11 emulator tests and the app with 14 unit and 4 widget tests.</p>
@@ -41,7 +52,7 @@
 
 <h2>I. Introduction</h2>
 <p>Facility and safety problems on a residential campus—no water in a residence, a projector failing mid-lecture, an unlit gate—are typically reported through word of mouth, chat groups or e-mail. Reports get lost, duplicates pile up, and the reporter receives no feedback, which discourages future reporting. Staff, in turn, lack a single prioritised view of what is open.</p>
-<p>CampusFix addresses this with three ideas: (1) a reporting flow that takes under thirty seconds, (2) a transparent status timeline that the reporter can watch update live, and (3) a staff workflow with priorities, notes and moderation, protected by server-enforced roles. Section II lists requirements, Sections III–VI describe the architecture, data model, state management and security, Section VII the UI/UX rationale, Section VIII testing, and Sections IX–X challenges and limitations.</p>
+<p>CampusFix addresses this with three ideas: (1) a reporting flow that takes under thirty seconds, (2) a transparent status timeline that the reporter can watch update live, and (3) a staff workflow with priorities, notes and moderation, protected by server-enforced roles. Section II lists requirements, Sections III–VI describe the architecture, data model, state management and security, Sections VII–VIII the UI/UX rationale and key workflows, Section IX testing, Sections X–XII challenges, limitations and lessons learned. Appendix A maps each assessment criterion to its evidence.</p>
 
 <h2>II. Requirements</h2>
 <table>
@@ -86,7 +97,18 @@ erDiagram
   NOTIFICATIONS { string incidentId string title string message bool read timestamp at }
 </pre></div>
 <div class="cap">Fig. 2. Firestore schema. Photos are stored in Cloud Storage at <code>incidents/{uid}/{incidentId}.jpg</code>.</div>
-<p><b>Queries and indexes.</b> All queries order by a single field (<code>createdAt</code>, <code>at</code>), which Firestore indexes automatically, so no composite indexes are required. Status/category filtering and search run on the client over the live list—an intentional trade-off for a campus-scale dataset (Section X).</p>
+<pre>
+// incidents/{id} — example document
+{ "title": "Water shortage", "category": "water", "location": "Student Residence",
+  "description": "No water supply on the 2nd floor since this morning...",
+  "status": "inProgress", "priority": "high", "isHidden": false,
+  "reporterId": "Kx91…", "reporterName": "Amina Hassan", "isAnonymous": false,
+  "photoUrl": "https://firebasestorage.googleapis.com/…/incidents/Kx91…/a8f2….jpg",
+  "resolutionNote": null, "createdAt": Timestamp, "updatedAt": Timestamp }
+// incidents/{id}/history/{hid}
+{ "from": "inReview", "to": "inProgress", "byName": "David Mugisha", "note": "Plumber assigned", "at": Timestamp }
+</pre>
+<p><b>Queries and indexes.</b> All queries order by a single field (<code>createdAt</code>, <code>at</code>), which Firestore indexes automatically, so no composite indexes are required. Status/category filtering and search run on the client over the live list—an intentional trade-off for a campus-scale dataset (Section XI).</p>
 <p><b>Atomic writes.</b> Creating a report writes the incident and its first history entry in one batch; a staff status change writes the incident update, a history entry and the reporter's notification in one batch, so the timeline and notifications can never disagree with the status. Timestamps use <code>FieldValue.serverTimestamp()</code> to avoid device clock skew.</p>
 
 <h2>V. State Management</h2>
@@ -103,14 +125,14 @@ final filteredFeedProvider = Provider&lt;AsyncValue&lt;List&lt;Incident&gt;&gt;&
 
 <h2>VI. Security and Role-Based Access Control</h2>
 <p>Client checks improve UX but cannot be trusted, so every rule that matters is enforced in <code>firestore.rules</code> and <code>storage.rules</code>. The role is stored in <code>users/{uid}.role</code>; self-registration can only create <code>student</code>, and a user can never modify their own role. Staff are promoted manually in the console by an administrator.</p>
-<table>
+<div class="avoid"><div class="cap" style="margin:6pt 0 0">Table I. Access matrix enforced by security rules.</div><table>
   <tr><th>Actor</th><th>Allowed</th><th>Denied (examples)</th></tr>
   <tr><td>Signed-out / unverified</td><td>Register (campus e-mail only)</td><td>Reading any report</td></tr>
   <tr><td>Student</td><td>Read reports; create a report as themselves with status <i>submitted</i>; edit/delete own report while <i>submitted</i>; mark own notifications read</td><td>Spoofing reporterId; pre-setting status or isHidden; extra fields; changing status/priority; self-promotion</td></tr>
   <tr><td>Staff</td><td>Change status, priority, isHidden, resolutionNote; write history and notifications</td><td>Rewriting a report's title or description</td></tr>
   <tr><td>Storage</td><td>Owner uploads images &lt; 5 MB to own folder</td><td>Non-images, large files, other users' folders</td></tr>
 </table>
-<div class="cap">Table I. Access matrix enforced by security rules.</div>
+</div>
 <pre>
 allow update: if isStaff()
   &amp;&amp; changedOnly(['status','priority','isHidden','resolutionNote','updatedAt']);
@@ -121,32 +143,76 @@ function isStaff() { return verified() &amp;&amp;
 
 <h2>VII. UI/UX Design Rationale</h2>
 <p>The interface follows the provided mockups: a single purple accent (#8B10F2) on a soft lavender-grey background, rounded 16 px cards and Plus Jakarta Sans. Status has a consistent colour language everywhere (amber Submitted, blue In Review, purple In Progress, green Resolved), so users read state at a glance. A raised centre "Report" button keeps the primary action one tap away from every tab. The report form uses large category tiles instead of a dropdown because the category is the most important triage signal. Every list has loading skeletons, an empty state with a next action, and an error state with retry; destructive actions require confirmation; submission shows progress and a success sheet with "Track my report". Touch targets are at least 48 dp and interactive elements carry semantic labels.</p>
-<div class="todo">[ADD ANNOTATED SCREENSHOTS: Login · Home · Report form · Details (student) · Details (staff panel) · Staff dashboard · Firebase console]</div>
-<div class="cap">Fig. 3. Key screens.</div>
 
-<h2>VIII. Testing Strategy</h2>
-<table>
+<h2>VIII. Key Workflows</h2>
+<p>The screenshots below are rendered from the application's own widget tree (Flutter test renderer, iPhone-size 390×844 pt viewport, real fonts and icons) using seeded demo data; the same screens run on Android against Firebase in the video demonstration, where the corresponding Firebase Console records are also shown.</p>
+
+<div class="avoid"><h3>A. Authentication</h3>
+<div class="shots"><div class="shot"><img src="../screenshots/01_login.png"><b>(a)</b> Login with campus e-mail</div><div class="shot"><img src="../screenshots/02_register.png"><b>(b)</b> Registration (domain-restricted)</div><div class="shot"><img src="../screenshots/03_verify_email.png"><b>(c)</b> Mandatory e-mail verification</div></div>
+<div class="cap">Fig. 3. Authentication flow.</div>
+<ul class="notes avoid">
+  <li>(a)–(b) The e-mail validator rejects any domain other than <code>@alustudent.com</code>; the same check is repeated in the security rules, so a modified client cannot bypass it.</li>
+  <li>(c) The router redirects any unverified account here; Firestore rules additionally require <code>email_verified</code>. "I've verified" reloads the user and refreshes the ID token so rules see the new claim immediately.</li>
+</ul></div>
+
+<div class="avoid"><h3>B. Reporting an Incident</h3>
+<div class="shots"><div class="shot"><img src="../screenshots/04_home.png"><b>(a)</b> Student home with live summary</div><div class="shot"><img src="../screenshots/05_report_form.png"><b>(b)</b> Report form, category selected</div><div class="shot"><img src="../screenshots/06_report_validation.png"><b>(c)</b> Inline validation feedback</div></div>
+<div class="cap">Fig. 4. Reporting flow.</div>
+<ul class="notes avoid">
+  <li>(a) The banner and the raised centre button both lead to the form; summary tiles are computed live from the student's reports and act as shortcuts into filtered lists.</li>
+  <li>(b) Large category tiles, title, description, campus location and optional photo (with upload progress) plus an "anonymous" switch that prevents the name being stored.</li>
+  <li>(c) Every missing field is highlighted at once and a snackbar summarises the problem; nothing is written until the form is valid.</li>
+</ul></div>
+
+<div class="avoid"><h3>C. Browsing, Details and Tracking</h3>
+<div class="shots"><div class="shot"><img src="../screenshots/07_feed_filtered.png"><b>(a)</b> Feed filtered to “In Progress”</div><div class="shot"><img src="../screenshots/08_details_student.png"><b>(b)</b> Details with live status timeline</div><div class="shot"><img src="../screenshots/09_my_reports.png"><b>(c)</b> My Reports / profile</div></div>
+<div class="cap">Fig. 5. Browsing and tracking.</div>
+<ul class="notes avoid">
+  <li>(a) Search plus status and category chips combine; the result count and "Clear filters" give immediate feedback.</li>
+  <li>(b) The four-step timeline is drawn from the <code>history</code> sub-collection and updates in real time; the activity log shows who moved the report and when.</li>
+  <li>(c) Personal statistics and an independent status filter for the student's own reports.</li>
+</ul></div>
+
+<div class="avoid"><h3>D. Staff Workflow and Notifications</h3>
+<div class="shots"><div class="shot"><img src="../screenshots/11_staff_dashboard.png"><b>(a)</b> Staff dashboard: priority queue</div><div class="shot"><img src="../screenshots/12_details_staff.png"><b>(b)</b> Staff controls on details</div><div class="shot"><img src="../screenshots/10_notifications.png"><b>(c)</b> Student notification after update</div></div>
+<div class="cap">Fig. 6. Role-based staff workflow.</div>
+<ul class="notes avoid">
+  <li>(a) Staff land on a dashboard with campus-wide counts and a queue sorted by priority then age; high-priority items carry a red marker.</li>
+  <li>(b) The "Manage report" panel (status, priority, note) is only rendered for staff, and the rules only accept these fields from a staff account.</li>
+  <li>(c) Each status change writes a notification for the reporter in the same batch; the bell shows an unread badge.</li>
+</ul></div>
+
+<h2>IX. Testing Strategy</h2>
+<div class="avoid"><div class="cap" style="margin:6pt 0 0">Table II. Test pyramid.</div><table>
   <tr><th>Level</th><th>Tool</th><th>What is verified</th><th>Result</th></tr>
   <tr><td>Static analysis</td><td><code>flutter analyze</code> (flutter_lints)</td><td>Whole codebase</td><td>0 issues</td></tr>
   <tr><td>Unit</td><td>flutter_test</td><td>Validators (domain allow-list), date formatting, filter and stats logic, hidden-report visibility, repository batch semantics, report controller (validation, anonymity, 5-report limit), staff-only status change</td><td>14 pass</td></tr>
   <tr><td>Widget</td><td>flutter_test</td><td>Login validation and error snackbar; report form validation and error clearing</td><td>4 pass</td></tr>
   <tr><td>Security rules</td><td>Firestore emulator + @firebase/rules-unit-testing</td><td>11 scenarios covering registration, self-promotion, read gating, create validation, workflow fields, owner edit window, staff batch, notifications</td><td>11 pass</td></tr>
   <tr><td>Live end-to-end</td><td>REST against production project</td><td>Demo student signs in, reads 7 reports, is denied status change and self-promotion</td><td>Pass</td></tr>
-  <tr><td>Manual</td><td>Android device</td><td>Full student and staff flows, two-device real-time update</td><td>[ADD]</td></tr>
+  <tr><td>Visual</td><td>Golden rendering (<code>tool/screenshots_test.dart</code>)</td><td>12 screens rendered at phone size; any layout overflow fails the run</td><td>12 rendered, 0 overflows</td></tr>
+  <tr><td>Manual</td><td>Android emulator / device</td><td>Full student and staff flows, two-device real-time update, Firebase Console records</td><td>Shown in video</td></tr>
 </table>
-<div class="cap">Table II. Test pyramid.</div>
+</div>
 <p>Because every repository has an in-memory fake behind the same interface, logic and widget tests run in milliseconds without network or emulator, while rule tests run against the real rules engine.</p>
 
-<h2>IX. Challenges</h2>
+<h2>X. Challenges</h2>
 <p><b>Lost validation errors.</b> A widget test revealed that Title/Description errors disappeared after submit. The cause was an inline "Choose a category" message inserted <i>above</i> the fields inside a <code>ListView</code>: list children are matched by index, so the insertion shifted the fields and rebuilt their state. The fix keeps a fixed-size placeholder in that slot.</p>
+<p><b>Layout overflow found by rendering.</b> Rendering every screen to an image exposed a 7 px overflow in the bottom navigation: the raised "Report" button was positioned with <code>Transform.translate</code>, which moves paint but not layout. It was rebuilt with a <code>Stack</code> so the button overhangs the bar without consuming height.</p>
 <p><b>Stream race in fakes.</b> <code>async*</code> generators subscribe to the underlying broadcast stream lazily, so an event emitted immediately after listening was dropped. Replacing them with <code>Stream.multi</code> subscribes synchronously.</p>
 <p><b>Dependency mismatch.</b> google_fonts 9 targets the new standalone <code>material_ui</code> package and its <code>TextTheme</code> type is incompatible with Flutter's; the project pins google_fonts 8.</p>
-<p><b>Rules are not filters.</b> Firestore rejects a list query if any matching document could be unreadable, so per-document visibility for hidden reports cannot be expressed as a read rule on a feed query; hiding is therefore a moderation flag applied in the logic layer (see Section X).</p>
+<p><b>Rules are not filters.</b> Firestore rejects a list query if any matching document could be unreadable, so per-document visibility for hidden reports cannot be expressed as a read rule on a feed query; hiding is therefore a moderation flag applied in the logic layer (see Section XI).</p>
 
-<h2>X. Limitations and Future Work</h2>
+<h2>XI. Limitations and Future Work</h2>
 <p>(1) Search and filtering run on the client, suitable for hundreds of reports; at larger scale a search service (e.g., Typesense) and paginated queries would be needed. (2) The five-open-reports limit is enforced in the app, because security rules cannot count documents; a Cloud Function could enforce it server-side. (3) Hidden reports are removed from student views but remain readable via direct API access. (4) Notifications are in-app only; push notifications via FCM would require a Cloud Function trigger. (5) Staff promotion is manual. (6) Photo upload requires the Firebase Blaze plan.</p>
 
-<h2>XI. Conclusion</h2>
+<h2>XII. Lessons Learned</h2>
+<p><b>Design the data layer as an interface first.</b> Writing the UI against repository interfaces with an in-memory fake allowed every screen to be built and tested before Firebase existed, and swapping to Firebase changed no UI code.</p>
+<p><b>Security belongs on the server.</b> Hiding a button is a UX decision; only security rules make "staff-only" true. Rule tests exercise attacks—spoofed reporters, self-promotion, status tampering—that no amount of clicking through the app would ever attempt, which is why they must be automated.</p>
+<p><b>Tests find the bugs inspection misses.</b> The list-index error, the stream race and the navigation overflow all looked correct on reading and were only revealed by widget tests and rendered screenshots.</p>
+<p><b>Model the domain once.</b> Keeping status and category as enums with a single style extension (label, colour, icon) kept the UI consistent across every screen and made changes one-line edits.</p>
+
+<h2>XIII. Conclusion</h2>
 <p>CampusFix demonstrates that a small, well-layered Flutter codebase can deliver a real-time, role-secured reporting workflow. Repository interfaces made the app testable without a backend, Riverpod streams made live updates nearly free, and server-side rules ensure that the role model holds even against a modified client. The main lesson was that correctness bugs (the list-index and stream-race issues) were found by tests, not by inspection, which justified investing in tests early.</p>
 
 <h2>References</h2>
@@ -161,6 +227,42 @@ function isStaff() { return verified() &amp;&amp;
   <li>M. Fowler, <i>Patterns of Enterprise Application Architecture</i>. Boston, MA, USA: Addison-Wesley, 2002 (Repository pattern).</li>
   <li>J. Nielsen, "10 usability heuristics for user interface design," Nielsen Norman Group, 1994 (updated 2024).</li>
 </ol>
+
+<h2 class="appendix">Appendix A. Assessment Criteria → Evidence</h2>
+<table>
+  <tr><th>Criterion</th><th>Where to find it</th></tr>
+  <tr><td>UI/UX design</td><td>Sec. VII, Figs. 3–6; video 0:00–4:30</td></tr>
+  <tr><td>Firebase Authentication (ALU e-mail + verification)</td><td>Sec. II F1, VI; Fig. 3; <code>lib/data/repositories/firebase_auth_repository.dart</code>; video 0:40–2:00</td></tr>
+  <tr><td>Firestore CRUD &amp; backend workflow</td><td>Sec. IV (schema, batches); <code>firestore_incident_repository.dart</code>; video 2:00–3:30</td></tr>
+  <tr><td>State management &amp; architecture</td><td>Sec. III, V; Fig. 1; <code>lib/logic/</code></td></tr>
+  <tr><td>Feature implementation</td><td>Sec. II, VIII; Figs. 4–6</td></tr>
+  <tr><td>Technical explanation</td><td>Video 6:00–8:30 (widgets, navigation, forms, async, streams, Riverpod, rules)</td></tr>
+  <tr><td>Code quality</td><td>Appendix B; <code>flutter analyze</code>: 0 issues; 17 reusable widgets</td></tr>
+  <tr><td>Report quality</td><td>This document: diagrams (Figs. 1–2), screenshots (Figs. 3–6), rules (Table I), testing (Table II), IEEE references</td></tr>
+  <tr><td>Product thinking, privacy &amp; misuse</td><td>Sec. II N2, VI (anonymity), VII; staff moderation and report limit</td></tr>
+</table>
+
+<h2>Appendix B. Repository Structure and How to Run</h2>
+<pre>
+lib/
+  core/      theme tokens · constants · validators · formatters · router (auth/role redirects)
+  data/      models (Incident, AppUser, StatusChange, AppNotification, enums)
+             repositories: interfaces + Firebase + in-memory fake implementations
+  logic/     Riverpod providers: auth, incidents, filters, report form, staff actions
+  ui/        widgets/ (17 reusable components) · screens/ auth · student · staff · shared · shell
+test/        unit + widget tests (18)
+rules-test/  Firestore security-rule tests on the emulator (11)
+tool/        screenshot renderer used for this report
+firestore.rules · storage.rules · firebase.json
+</pre>
+<pre>
+flutter pub get
+flutter run                                   # Android emulator/device, live Firebase
+flutter run --dart-define=FAKE_BACKEND=true   # offline demo data
+flutter test                                  # 18 app tests
+cd rules-test &amp;&amp; npm install &amp;&amp; npm test      # 11 security-rule tests (needs Java)
+</pre>
+<p>Staff accounts are promoted by setting <code>users/{uid}.role = "staff"</code> in the Firebase Console; the app itself can never grant this role.</p>
 
 <script>mermaid.initialize({ startOnLoad: true, theme: 'neutral', fontFamily: 'Times New Roman' });</script>
 </body>
