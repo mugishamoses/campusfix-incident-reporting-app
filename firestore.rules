@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()   { return request.auth != null; }
+    function verified()   { return signedIn() && request.auth.token.email_verified == true; }
+    function campusEmail(){ return request.auth.token.email.matches('.*@alustudent[.]com$'); }
+    function isStaff()    { return verified() &&
+                              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff'; }
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+    function validText(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
+      // Self-registration is always a student with a campus email.
+      allow create: if signedIn() && request.auth.uid == uid && campusEmail()
+                    && request.resource.data.role == 'student';
+      // Nobody can change their own role (staff are promoted in the console).
+      allow update: if signedIn() && request.auth.uid == uid
+                    && changedOnly(['name', 'department']);
+
+      match /notifications/{nid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow update: if signedIn() && request.auth.uid == uid && changedOnly(['read']);
+        allow create: if isStaff();
+      }
+    }
+
+    match /incidents/{id} {
+      function isOwner() { return request.auth.uid == resource.data.reporterId; }
+
+      allow read: if verified();
+
+      allow create: if verified() && campusEmail()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.isHidden == false
+        && request.resource.data.keys().hasOnly(['title','description','category','location',
+             'status','priority','reporterId','reporterName','isAnonymous','isHidden',
+             'photoUrl','resolutionNote','createdAt','updatedAt'])
+        && validText(request.resource.data.title, 3, 80)
+        && validText(request.resource.data.description, 10, 1000);
+
+      // Owner may edit content only while still "submitted".
+      allow update: if verified() && isOwner() && resource.data.status == 'submitted'
+        && changedOnly(['title','description','category','location','reporterName',
+                        'isAnonymous','photoUrl','updatedAt'])
+        && validText(request.resource.data.title, 3, 80)
+        && validText(request.resource.data.description, 10, 1000);
+
+      // Staff may only touch workflow fields.
+      allow update: if isStaff()
+        && changedOnly(['status','priority','isHidden','resolutionNote','updatedAt']);
+
+      allow delete: if verified() && isOwner() && resource.data.status == 'submitted';
+
+      match /history/{hid} {
+        function parent() { return get(/databases/$(database)/documents/incidents/$(id)).data; }
+        allow read: if verified();
+        // Reporter writes the first "submitted" entry (same batch as the incident).
+        allow create: if isStaff() || (verified() && request.resource.data.to == 'submitted'
+                                       && request.resource.data.from == null);
+        allow delete: if verified() && parent().reporterId == request.auth.uid
+                      && parent().status == 'submitted';
+      }
+    }
+  }
+}
