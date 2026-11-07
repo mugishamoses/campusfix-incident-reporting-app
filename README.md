@@ -25,6 +25,17 @@ cd rules-test && npm install && npm test   # security-rule tests (Firestore emul
 ```
 Demo accounts (fake backend): `amina@alustudent.com` / `staff@alustudent.com`, password `password`.
 
+## Run in the browser (fastest, no emulator)
+```bash
+make web          # Chrome + hot reload, live Firebase   (= flutter run -d chrome)
+make web-demo     # Chrome on offline demo data
+make web-serve    # optimised release build at http://localhost:8080
+make web-deploy   # publish to https://campusfix-alu-2026.web.app (Firebase Hosting)
+```
+On wide screens the app keeps a phone-width layout. Photos upload as bytes and are shown as
+`<img>` elements on web, so Storage images load without extra CORS setup.
+The graded build is still Android/iOS; the web target is for quick testing and demos.
+
 ## Firebase setup
 1. `firebase login` then `dart pub global activate flutterfire_cli && flutterfire configure`
 2. Console: enable Email/Password auth, Firestore, Storage (Blaze plan required for Storage).

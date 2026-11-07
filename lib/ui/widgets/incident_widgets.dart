@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -68,6 +70,13 @@ class IncidentImage extends StatelessWidget {
     Widget child;
     if (url == null) {
       child = placeholder;
+    } else if (kIsWeb) {
+      // Web: picked photos are blob: URLs, and Storage URLs lack CORS headers for
+      // canvas decoding, so let the browser draw them as <img> elements.
+      child = Image.network(url,
+          fit: BoxFit.cover,
+          webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+          errorBuilder: (_, _, _) => placeholder);
     } else if (url.startsWith('http')) {
       // Disk-cached so feed thumbnails don't re-download on every scroll.
       child = CachedNetworkImage(

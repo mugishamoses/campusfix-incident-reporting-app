@@ -34,7 +34,8 @@
           "projectId": "campusfix-alu-2026",
           "configurations": {
             "android": "1:241704992368:android:86b919c5b9f29623dabeb5",
-            "ios": "1:241704992368:ios:9da83c8eef3e0555dabeb5"
+            "ios": "1:241704992368:ios:9da83c8eef3e0555dabeb5",
+            "web": "1:241704992368:web:85efc2d8d2f23c03dabeb5"
           }
         }
       }
@@ -44,5 +45,39 @@
     "providers": {
       "emailPassword": true
     }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|wasm|mjs|png|ttf|otf|json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=31536000,immutable"
+          }
+        ]
+      },
+      {
+        "source": "/@(index.html|flutter_bootstrap.js|flutter_service_worker.js|version.json|main.dart.js)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -56,7 +53,6 @@ class DefaultFirebaseOptions {
     projectId: 'campusfix-alu-2026',
     storageBucket: 'campusfix-alu-2026.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBEKIIIDtr5MMUvpZWI46zHsTjx3C-fHfY',
     appId: '1:241704992368:ios:9da83c8eef3e0555dabeb5',
@@ -64,5 +60,14 @@ class DefaultFirebaseOptions {
     projectId: 'campusfix-alu-2026',
     storageBucket: 'campusfix-alu-2026.firebasestorage.app',
     iosBundleId: 'com.alu.campusfix.campusfix',
+  );
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCAKgq5DV58zDeVqD6vqYrvhypFg3khJFE',
+    appId: '1:241704992368:web:85efc2d8d2f23c03dabeb5',
+    messagingSenderId: '241704992368',
+    projectId: 'campusfix-alu-2026',
+    authDomain: 'campusfix-alu-2026.firebaseapp.com',
+    storageBucket: 'campusfix-alu-2026.firebasestorage.app',
+    measurementId: 'G-RKDEB006G7',
   );
 }

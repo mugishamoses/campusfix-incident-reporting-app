@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/app_failure.dart';
@@ -88,8 +87,9 @@ class FirestoreIncidentRepository implements IncidentRepository {
     void Function(double)? onProgress,
   ) async {
     final ref = _storage.ref('incidents/$uid/$incidentId.jpg');
-    final task = ref.putFile(
-      File(localPath),
+    // Bytes (not File) so the same code uploads from Android, iOS and web (blob URLs).
+    final task = ref.putData(
+      await XFile(localPath).readAsBytes(),
       SettableMetadata(contentType: 'image/jpeg'),
     );
     final sub = task.snapshotEvents.listen((s) {
