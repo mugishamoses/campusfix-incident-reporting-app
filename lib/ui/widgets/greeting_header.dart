@@ -26,7 +26,14 @@ class GreetingHeader extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Hello, ${firstName(user?.name ?? '')} 👋', style: text.headlineSmall),
+              Row(children: [
+                Flexible(
+                  child: Text('Hello, ${firstName(user?.name ?? '')}',
+                      overflow: TextOverflow.ellipsis, style: text.headlineSmall),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.waving_hand_rounded, color: Color(0xFFF5B301), size: 26),
+              ]),
               const SizedBox(height: AppSpace.xs),
               Text(subtitle, style: text.bodyMedium?.copyWith(color: AppColors.textMuted)),
             ],

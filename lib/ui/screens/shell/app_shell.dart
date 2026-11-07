@@ -52,11 +52,14 @@ class AppShell extends ConsumerWidget {
                           HapticFeedback.lightImpact();
                           context.push(Routes.newReport);
                         },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                        // Stack (not Column): the raised button overhangs the bar
+                        // without taking layout height, so the 68px bar never overflows.
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.topCenter,
                           children: [
-                            Transform.translate(
-                              offset: const Offset(0, -14),
+                            Positioned(
+                              top: -20,
                               child: Container(
                                 width: 58,
                                 height: 58,
@@ -69,9 +72,9 @@ class AppShell extends ConsumerWidget {
                                     color: Colors.white, size: 30),
                               ),
                             ),
-                            Transform.translate(
-                              offset: const Offset(0, -10),
-                              child: const Text('Report',
+                            const Positioned(
+                              bottom: 10,
+                              child: Text('Report',
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
