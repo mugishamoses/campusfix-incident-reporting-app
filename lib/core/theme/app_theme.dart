@@ -4,7 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 abstract final class AppTheme {
-  static ThemeData get light {
+  /// [fontFamily] bypasses runtime font fetching (used for offline screenshot renders).
+  static ThemeData light({String? fontFamily}) {
+    TextStyle font({double? fontSize, FontWeight? fontWeight, Color? color, double? height}) =>
+        fontFamily != null
+            ? TextStyle(fontFamily: fontFamily, fontSize: fontSize, fontWeight: fontWeight, color: color, height: height)
+            : GoogleFonts.plusJakartaSans(fontSize: fontSize, fontWeight: fontWeight, color: color, height: height);
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
@@ -15,22 +20,24 @@ abstract final class AppTheme {
       ),
       scaffoldBackgroundColor: AppColors.background,
     );
-    final text = GoogleFonts.plusJakartaSansTextTheme(base.textTheme)
+    final text = (fontFamily != null
+            ? base.textTheme.apply(fontFamily: fontFamily)
+            : GoogleFonts.plusJakartaSansTextTheme(base.textTheme))
         .apply(bodyColor: AppColors.text, displayColor: AppColors.text)
         .copyWith(
-          headlineSmall: GoogleFonts.plusJakartaSans(
+          headlineSmall: font(
               fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.text),
-          titleLarge: GoogleFonts.plusJakartaSans(
+          titleLarge: font(
               fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text),
-          titleMedium: GoogleFonts.plusJakartaSans(
+          titleMedium: font(
               fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text),
-          titleSmall: GoogleFonts.plusJakartaSans(
+          titleSmall: font(
               fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.text),
-          bodyMedium: GoogleFonts.plusJakartaSans(
+          bodyMedium: font(
               fontSize: 15, height: 1.45, color: AppColors.text),
-          bodySmall: GoogleFonts.plusJakartaSans(
+          bodySmall: font(
               fontSize: 13, color: AppColors.textMuted),
-          labelLarge: GoogleFonts.plusJakartaSans(
+          labelLarge: font(
               fontSize: 15, fontWeight: FontWeight.w700),
         );
     final inputBorder = OutlineInputBorder(

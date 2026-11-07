@@ -22,7 +22,7 @@ class CampusFixApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
+        theme: AppTheme.light(),
         routerConfig: ref.watch(routerProvider),
       );
 }
