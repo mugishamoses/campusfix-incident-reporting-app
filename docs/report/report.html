@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CampusFix — Technical Architecture Report</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; line-height: 1.35; color: #111; max-width: 180mm; margin: auto; }
+  h1 { font-size: 20pt; text-align: center; margin: 0 0 4pt; }
+  .authors { text-align: center; font-size: 10.5pt; margin-bottom: 10pt; }
+  .abstract { font-size: 9.5pt; font-weight: bold; text-align: justify; margin: 0 0 6pt; }
+  .abstract i { font-weight: bold; }
+  .keywords { font-size: 9.5pt; font-style: italic; margin-bottom: 12pt; }
+  h2 { font-size: 11pt; font-variant: small-caps; text-align: center; margin: 14pt 0 6pt; letter-spacing: .5pt; }
+  h3 { font-size: 10.5pt; font-style: italic; font-weight: normal; margin: 9pt 0 4pt; }
+  p { text-align: justify; margin: 0 0 6pt; }
+  table { border-collapse: collapse; width: 100%; font-size: 9pt; margin: 6pt 0 4pt; }
+  th, td { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3pt 5pt; text-align: left; vertical-align: top; }
+  th { font-variant: small-caps; }
+  .cap { text-align: center; font-size: 8.5pt; font-variant: small-caps; margin-bottom: 8pt; }
+  code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 8.3pt; }
+  pre { background: #f6f6f6; padding: 6pt; border: 1px solid #ddd; white-space: pre-wrap; }
+  .fig { text-align: center; margin: 6pt 0; page-break-inside: avoid; }
+  .todo { border: 1px dashed #b00; color: #b00; padding: 18pt; text-align: center; font-family: sans-serif; font-size: 9pt; margin: 4pt 0; }
+  ol.refs { font-size: 9pt; padding-left: 18pt; }
+  ol.refs li { margin-bottom: 3pt; }
+  .links { text-align: center; font-size: 9.5pt; margin-bottom: 10pt; }
+</style>
+</head>
+<body>
+
+<h1>CampusFix: A Real-Time, Role-Based Campus Incident Reporting App Built with Flutter and Firebase</h1>
+<div class="authors">Mugisha Moses · African Leadership University · m.mugisha@alustudent.com</div>
+<div class="links">
+  GitHub repository: <b>[ADD LINK]</b> &nbsp;·&nbsp; Video demonstration: <b>[ADD LINK]</b>
+</div>
+
+<p class="abstract"><i>Abstract</i>—Broken facilities, water and power outages and safety hazards on campus are usually reported informally, so students cannot tell whether anyone acted and staff cannot prioritise. CampusFix is a Flutter mobile application backed by Firebase that lets verified students report incidents with a category, description, location and optional photo, and follow each report through a four-stage lifecycle (Submitted → In Review → In Progress → Resolved) in real time. Authorised staff triage a priority-sorted queue, change status with notes, set priority and hide abusive reports. The app uses a layered architecture (UI, logic, data) with Riverpod for state management, Cloud Firestore streams for live updates, and server-side security rules for role-based access control. Rules are verified with 11 emulator tests and the app with 14 unit and 4 widget tests.</p>
+<p class="keywords"><b>Index Terms</b>—Flutter, Firebase, Cloud Firestore, Riverpod, role-based access control, incident reporting, mobile computing.</p>
+
+<h2>I. Introduction</h2>
+<p>Facility and safety problems on a residential campus—no water in a residence, a projector failing mid-lecture, an unlit gate—are typically reported through word of mouth, chat groups or e-mail. Reports get lost, duplicates pile up, and the reporter receives no feedback, which discourages future reporting. Staff, in turn, lack a single prioritised view of what is open.</p>
+<p>CampusFix addresses this with three ideas: (1) a reporting flow that takes under thirty seconds, (2) a transparent status timeline that the reporter can watch update live, and (3) a staff workflow with priorities, notes and moderation, protected by server-enforced roles. Section II lists requirements, Sections III–VI describe the architecture, data model, state management and security, Section VII the UI/UX rationale, Section VIII testing, and Sections IX–X challenges and limitations.</p>
+
+<h2>II. Requirements</h2>
+<table>
+  <tr><th>ID</th><th>Requirement</th><th>Implementation</th></tr>
+  <tr><td>F1</td><td>Campus-only registration, login, logout, persistent session</td><td>Firebase Auth (email/password); domain allow-list <code>@alustudent.com</code>; mandatory e-mail verification; <code>userChanges()</code> stream restores the session on launch</td></tr>
+  <tr><td>F2</td><td>Submit incident with category, description, location, optional photo</td><td>Six categories, validated form, campus location list, camera/gallery picker with on-device downscaling and upload progress</td></tr>
+  <tr><td>F3</td><td>Browse, search and filter reports</td><td>Live feed; status and category filters; free-text search over title, location and description</td></tr>
+  <tr><td>F4</td><td>Track status lifecycle</td><td>Four-step timeline built from a <code>history</code> sub-collection; in-app notifications on each change</td></tr>
+  <tr><td>F5</td><td>Staff-only administrative actions</td><td>Status, priority, resolution note, hide-as-spam—enforced in Firestore rules</td></tr>
+  <tr><td>N1</td><td>Real-time updates</td><td>Firestore snapshot streams → Riverpod <code>StreamProvider</code>s</td></tr>
+  <tr><td>N2</td><td>Privacy &amp; anti-abuse</td><td>Anonymous reporting (name never stored), verified-email gate, five-open-reports limit, staff moderation</td></tr>
+  <tr><td>N3</td><td>Maintainability</td><td>Three-layer architecture, repository interfaces, 17 reusable widgets, lint-clean code</td></tr>
+</table>
+
+<h2>III. System Architecture</h2>
+<p>The app follows a three-layer architecture (Fig. 1). The <b>UI layer</b> contains screens and reusable widgets and never imports Firebase. The <b>logic layer</b> holds Riverpod providers and notifiers that combine streams, apply filters and run actions. The <b>data layer</b> defines repository interfaces (<code>AuthRepository</code>, <code>IncidentRepository</code>) with two implementations each: a Firebase implementation and an in-memory fake used for tests and offline UI work. A compile-time flag (<code>FAKE_BACKEND</code>) selects the implementation; the rest of the app is unaware of which is in use.</p>
+<div class="fig"><pre class="mermaid">
+flowchart TB
+  UI["<b>UI layer</b> — lib/ui<br/>Screens: Auth · Home · Feed · Report form · Details · Staff dashboard · Profile<br/>Widgets: IncidentCard · StatusPill · StatusTimeline · CategoryTile · StatTile"]
+  L["<b>Logic layer</b> — lib/logic (Riverpod)<br/>authState · visibleIncidents · filters · staffQueue<br/>ReportFormController · IncidentActions"]
+  D["<b>Data layer</b> — lib/data<br/>AuthRepository · IncidentRepository (interfaces)"]
+  FB[("Firebase<br/>Auth · Firestore · Storage")]
+  FK[("In-memory fakes<br/>tests & offline demo")]
+  UI -->|watch / call| L -->|streams / async calls| D
+  D --> FB
+  D -.-> FK
+</pre></div>
+<div class="cap">Fig. 1. Layered architecture. Only the data layer depends on Firebase.</div>
+
+<p><b>Navigation</b> uses <code>go_router</code> with a single <code>redirect</code> function that reads the auth stream: signed-out users are sent to login, unverified users to the verification screen, and staff are kept out of student-only routes. A <code>StatefulShellRoute</code> keeps each bottom-navigation tab's state alive.</p>
+
+<h2>IV. Data Model</h2>
+<p>Firestore is document-oriented, so the schema is shaped around the app's queries rather than normalised tables (Fig. 2). Status history is a sub-collection so the incident document stays small and the timeline can be streamed independently. Notifications live under each user so that a single owner-only rule protects them.</p>
+<div class="fig"><pre class="mermaid">
+erDiagram
+  USERS ||--o{ NOTIFICATIONS : "users/{uid}/notifications"
+  USERS ||--o{ INCIDENTS : "reporterId"
+  INCIDENTS ||--|{ HISTORY : "incidents/{id}/history"
+  USERS { string name string email string department string role "student|staff" timestamp createdAt }
+  INCIDENTS { string title string description string category string location string status string priority string reporterId string reporterName bool isAnonymous bool isHidden string photoUrl string resolutionNote timestamp createdAt timestamp updatedAt }
+  HISTORY { string from string to string byName string note timestamp at }
+  NOTIFICATIONS { string incidentId string title string message bool read timestamp at }
+</pre></div>
+<div class="cap">Fig. 2. Firestore schema. Photos are stored in Cloud Storage at <code>incidents/{uid}/{incidentId}.jpg</code>.</div>
+<p><b>Queries and indexes.</b> All queries order by a single field (<code>createdAt</code>, <code>at</code>), which Firestore indexes automatically, so no composite indexes are required. Status/category filtering and search run on the client over the live list—an intentional trade-off for a campus-scale dataset (Section X).</p>
+<p><b>Atomic writes.</b> Creating a report writes the incident and its first history entry in one batch; a staff status change writes the incident update, a history entry and the reporter's notification in one batch, so the timeline and notifications can never disagree with the status. Timestamps use <code>FieldValue.serverTimestamp()</code> to avoid device clock skew.</p>
+
+<h2>V. State Management</h2>
+<p>Riverpod was chosen over BLoC because Firestore already exposes streams: a <code>StreamProvider</code> wraps each stream, and derived <code>Provider</code>s compose them declaratively (for example, <code>filteredFeedProvider = visibleIncidents ∘ feedFilter</code>). Every derived value recomputes automatically when any input changes, so a staff update propagates to the home stats, feed, profile list, details timeline and notification badge without manual wiring. <code>AsyncValue</code> gives every screen explicit loading, error and data states, rendered by one shared <code>AsyncSliverList</code> widget.</p>
+<p>Mutable UI state lives in <code>Notifier</code>s (filters, report form, auth and incident actions). Widgets keep only ephemeral state such as text controllers and a password-visibility toggle; no application state uses <code>setState</code>. Streams are keyed on the signed-in user's id so they restart cleanly on account switch rather than erroring after sign-out.</p>
+<pre>
+// logic/incident_providers.dart (excerpt)
+final filteredFeedProvider = Provider&lt;AsyncValue&lt;List&lt;Incident&gt;&gt;&gt;((ref) {
+  final filter = ref.watch(feedFilterProvider);
+  return ref.watch(visibleIncidentsProvider).whenData(filter.apply);
+});
+</pre>
+<p><b>Asynchrony.</b> Actions are <code>async</code> methods wrapped in <code>AsyncValue.guard</code>; the UI listens with <code>ref.listen</code> to show snackbars on failure. Firebase exceptions are translated to user-readable <code>AppFailure</code> messages in the data layer, both for one-off writes and on streams via <code>handleError</code>.</p>
+
+<h2>VI. Security and Role-Based Access Control</h2>
+<p>Client checks improve UX but cannot be trusted, so every rule that matters is enforced in <code>firestore.rules</code> and <code>storage.rules</code>. The role is stored in <code>users/{uid}.role</code>; self-registration can only create <code>student</code>, and a user can never modify their own role. Staff are promoted manually in the console by an administrator.</p>
+<table>
+  <tr><th>Actor</th><th>Allowed</th><th>Denied (examples)</th></tr>
+  <tr><td>Signed-out / unverified</td><td>Register (campus e-mail only)</td><td>Reading any report</td></tr>
+  <tr><td>Student</td><td>Read reports; create a report as themselves with status <i>submitted</i>; edit/delete own report while <i>submitted</i>; mark own notifications read</td><td>Spoofing reporterId; pre-setting status or isHidden; extra fields; changing status/priority; self-promotion</td></tr>
+  <tr><td>Staff</td><td>Change status, priority, isHidden, resolutionNote; write history and notifications</td><td>Rewriting a report's title or description</td></tr>
+  <tr><td>Storage</td><td>Owner uploads images &lt; 5 MB to own folder</td><td>Non-images, large files, other users' folders</td></tr>
+</table>
+<div class="cap">Table I. Access matrix enforced by security rules.</div>
+<pre>
+allow update: if isStaff()
+  &amp;&amp; changedOnly(['status','priority','isHidden','resolutionNote','updatedAt']);
+function isStaff() { return verified() &amp;&amp;
+  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff'; }
+</pre>
+<p><b>Privacy.</b> When a student reports anonymously the real name is never written to the document (the stored name is "Anonymous student"), so it cannot leak through a direct database read; ownership is still tracked by uid for editing and rate limiting.</p>
+
+<h2>VII. UI/UX Design Rationale</h2>
+<p>The interface follows the provided mockups: a single purple accent (#8B10F2) on a soft lavender-grey background, rounded 16 px cards and Plus Jakarta Sans. Status has a consistent colour language everywhere (amber Submitted, blue In Review, purple In Progress, green Resolved), so users read state at a glance. A raised centre "Report" button keeps the primary action one tap away from every tab. The report form uses large category tiles instead of a dropdown because the category is the most important triage signal. Every list has loading skeletons, an empty state with a next action, and an error state with retry; destructive actions require confirmation; submission shows progress and a success sheet with "Track my report". Touch targets are at least 48 dp and interactive elements carry semantic labels.</p>
+<div class="todo">[ADD ANNOTATED SCREENSHOTS: Login · Home · Report form · Details (student) · Details (staff panel) · Staff dashboard · Firebase console]</div>
+<div class="cap">Fig. 3. Key screens.</div>
+
+<h2>VIII. Testing Strategy</h2>
+<table>
+  <tr><th>Level</th><th>Tool</th><th>What is verified</th><th>Result</th></tr>
+  <tr><td>Static analysis</td><td><code>flutter analyze</code> (flutter_lints)</td><td>Whole codebase</td><td>0 issues</td></tr>
+  <tr><td>Unit</td><td>flutter_test</td><td>Validators (domain allow-list), date formatting, filter and stats logic, hidden-report visibility, repository batch semantics, report controller (validation, anonymity, 5-report limit), staff-only status change</td><td>14 pass</td></tr>
+  <tr><td>Widget</td><td>flutter_test</td><td>Login validation and error snackbar; report form validation and error clearing</td><td>4 pass</td></tr>
+  <tr><td>Security rules</td><td>Firestore emulator + @firebase/rules-unit-testing</td><td>11 scenarios covering registration, self-promotion, read gating, create validation, workflow fields, owner edit window, staff batch, notifications</td><td>11 pass</td></tr>
+  <tr><td>Live end-to-end</td><td>REST against production project</td><td>Demo student signs in, reads 7 reports, is denied status change and self-promotion</td><td>Pass</td></tr>
+  <tr><td>Manual</td><td>Android device</td><td>Full student and staff flows, two-device real-time update</td><td>[ADD]</td></tr>
+</table>
+<div class="cap">Table II. Test pyramid.</div>
+<p>Because every repository has an in-memory fake behind the same interface, logic and widget tests run in milliseconds without network or emulator, while rule tests run against the real rules engine.</p>
+
+<h2>IX. Challenges</h2>
+<p><b>Lost validation errors.</b> A widget test revealed that Title/Description errors disappeared after submit. The cause was an inline "Choose a category" message inserted <i>above</i> the fields inside a <code>ListView</code>: list children are matched by index, so the insertion shifted the fields and rebuilt their state. The fix keeps a fixed-size placeholder in that slot.</p>
+<p><b>Stream race in fakes.</b> <code>async*</code> generators subscribe to the underlying broadcast stream lazily, so an event emitted immediately after listening was dropped. Replacing them with <code>Stream.multi</code> subscribes synchronously.</p>
+<p><b>Dependency mismatch.</b> google_fonts 9 targets the new standalone <code>material_ui</code> package and its <code>TextTheme</code> type is incompatible with Flutter's; the project pins google_fonts 8.</p>
+<p><b>Rules are not filters.</b> Firestore rejects a list query if any matching document could be unreadable, so per-document visibility for hidden reports cannot be expressed as a read rule on a feed query; hiding is therefore a moderation flag applied in the logic layer (see Section X).</p>
+
+<h2>X. Limitations and Future Work</h2>
+<p>(1) Search and filtering run on the client, suitable for hundreds of reports; at larger scale a search service (e.g., Typesense) and paginated queries would be needed. (2) The five-open-reports limit is enforced in the app, because security rules cannot count documents; a Cloud Function could enforce it server-side. (3) Hidden reports are removed from student views but remain readable via direct API access. (4) Notifications are in-app only; push notifications via FCM would require a Cloud Function trigger. (5) Staff promotion is manual. (6) Photo upload requires the Firebase Blaze plan.</p>
+
+<h2>XI. Conclusion</h2>
+<p>CampusFix demonstrates that a small, well-layered Flutter codebase can deliver a real-time, role-secured reporting workflow. Repository interfaces made the app testable without a backend, Riverpod streams made live updates nearly free, and server-side rules ensure that the role model holds even against a modified client. The main lesson was that correctness bugs (the list-index and stream-race issues) were found by tests, not by inspection, which justified investing in tests early.</p>
+
+<h2>References</h2>
+<ol class="refs">
+  <li>Google, "Flutter documentation," 2026. [Online]. Available: https://docs.flutter.dev</li>
+  <li>Google, "Cloud Firestore: Get started with Cloud Firestore Security Rules," Firebase Documentation, 2026. [Online]. Available: https://firebase.google.com/docs/firestore/security/get-started</li>
+  <li>Google, "Firebase Authentication," Firebase Documentation, 2026. [Online]. Available: https://firebase.google.com/docs/auth</li>
+  <li>Google, "Test your Cloud Firestore Security Rules," Firebase Documentation, 2026. [Online]. Available: https://firebase.google.com/docs/firestore/security/test-rules-emulator</li>
+  <li>R. Rousselet, "Riverpod documentation," 2026. [Online]. Available: https://riverpod.dev</li>
+  <li>Flutter team, "go_router package," pub.dev, 2026. [Online]. Available: https://pub.dev/packages/go_router</li>
+  <li>D. F. Ferraiolo, R. Sandhu, S. Gavrila, D. R. Kuhn, and R. Chandramouli, "Proposed NIST standard for role-based access control," <i>ACM Trans. Inf. Syst. Secur.</i>, vol. 4, no. 3, pp. 224–274, 2001.</li>
+  <li>M. Fowler, <i>Patterns of Enterprise Application Architecture</i>. Boston, MA, USA: Addison-Wesley, 2002 (Repository pattern).</li>
+  <li>J. Nielsen, "10 usability heuristics for user interface design," Nielsen Norman Group, 1994 (updated 2024).</li>
+</ol>
+
+<script>mermaid.initialize({ startOnLoad: true, theme: 'neutral', fontFamily: 'Times New Roman' });</script>
+</body>
+</html>
