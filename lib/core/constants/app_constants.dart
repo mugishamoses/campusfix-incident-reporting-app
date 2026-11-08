@@ -29,7 +29,6 @@ abstract final class AppConstants {
 }
 
 abstract final class AppConfig {
-  /// Real Firebase by default. Offline UI demo with seeded data:
-  /// `flutter run --dart-define=FAKE_BACKEND=true`.
+  /// Offline demo data: `--dart-define=FAKE_BACKEND=true`.
   static const fakeBackend = bool.fromEnvironment('FAKE_BACKEND');
 }

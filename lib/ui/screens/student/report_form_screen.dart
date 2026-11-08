@@ -163,8 +163,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Editing: never show the form until the report has loaded, otherwise
-    // saving would create a new report instead of updating this one.
+    // Wait for the report to load, or saving would create a duplicate.
     final editId = widget.editId;
     if (editId != null && _editing == null) {
       final loaded = ref.watch(incidentProvider(editId));
@@ -234,8 +233,7 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
                     ),
                 ],
               ),
-              // Always occupy this slot: inserting a child would shift the
-              // ListView indices below and rebuild the fields, wiping their errors.
+              // Fixed slot: inserting a child shifts ListView indices and wipes field errors.
               _triedSubmit && state.category == null
                   ? const _InlineError('Choose a category')
                   : const SizedBox.shrink(),

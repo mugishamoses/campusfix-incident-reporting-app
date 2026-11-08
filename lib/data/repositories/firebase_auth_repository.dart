@@ -15,8 +15,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   DocumentReference<Map<String, dynamic>> _userDoc(String uid) => _db.doc('users/$uid');
 
-  /// Auth user joined with their `users/{uid}` profile (where the role lives).
-  /// `userChanges` also fires after `reload()`, so verification is picked up.
+  /// Auth user joined with `users/{uid}` (role); also fires after `reload()`.
   @override
   Stream<AppUser?> authStateChanges() {
     StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? profileSub;

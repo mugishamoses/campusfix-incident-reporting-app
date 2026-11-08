@@ -71,8 +71,7 @@ class IncidentImage extends StatelessWidget {
     if (url == null) {
       child = placeholder;
     } else if (kIsWeb) {
-      // Web: picked photos are blob: URLs, and Storage URLs lack CORS headers for
-      // canvas decoding, so let the browser draw them as <img> elements.
+      // Web: draw as <img> (blob URLs, and Storage lacks CORS for canvas).
       child = Image.network(url,
           fit: BoxFit.cover,
           webHtmlElementStrategy: WebHtmlElementStrategy.prefer,

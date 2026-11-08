@@ -16,8 +16,7 @@ final incidentRepositoryProvider = Provider<IncidentRepository>((ref) => AppConf
     ? FakeIncidentRepository()
     : FirestoreIncidentRepository(FirebaseFirestore.instance, FirebaseStorage.instance));
 
-/// uid of a signed-in, verified user (null otherwise). Streams key off this so
-/// they restart on account switch instead of erroring after sign-out.
+/// Verified user's uid; streams restart on account switch instead of erroring.
 final _readerUidProvider = Provider<String?>((ref) => ref.watch(
     currentUserProvider.select((u) => u != null && u.emailVerified ? u.uid : null)));
 

@@ -38,8 +38,7 @@
   <p>Checking your link.</p>
 </main>
 <script>
-// Handles Firebase Auth email actions without relying on the link's apiKey parameter
-// (links sent from some SDKs arrive with an empty apiKey, which breaks the default page).
+// Handles auth email links without the link's apiKey (some SDKs send it empty).
 const API_KEY = 'AIzaSyCAKgq5DV58zDeVqD6vqYrvhypFg3khJFE'; // public web key (safe to embed)
 const API = 'https://identitytoolkit.googleapis.com/v1/accounts';
 const q = new URLSearchParams(location.search.replace(/&amp;/g, '&')); // also tolerate HTML-escaped links

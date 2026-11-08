@@ -8,11 +8,7 @@ import '../models/enums.dart';
 import '../models/incident.dart';
 import 'incident_repository.dart';
 
-/// Firestore layout:
-///   incidents/{id}                       the report
-///   incidents/{id}/history/{hid}         status changes (timeline)
-///   users/{uid}/notifications/{nid}      status updates for the reporter
-/// Photos live in Storage at incidents/{uid}/{incidentId}.jpg
+/// incidents/{id}(/history), users/{uid}/notifications; photos at Storage incidents/{uid}/{id}.jpg.
 class FirestoreIncidentRepository implements IncidentRepository {
   FirestoreIncidentRepository(this._db, this._storage);
 

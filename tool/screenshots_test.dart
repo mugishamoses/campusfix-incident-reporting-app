@@ -1,6 +1,4 @@
-// Renders real app screens (fake backend, real fonts) to PNGs for the report.
-// Run: flutter test tool/screenshots_test.dart --update-goldens
-// Output: docs/screenshots/*.png
+// Renders screens to docs/screenshots: flutter test tool/screenshots_test.dart --update-goldens
 import 'dart:io';
 
 import 'package:campusfix/core/router/app_router.dart';

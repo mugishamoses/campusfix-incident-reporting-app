@@ -52,8 +52,7 @@ class AppShell extends ConsumerWidget {
                           HapticFeedback.lightImpact();
                           context.push(Routes.newReport);
                         },
-                        // Stack (not Column): the raised button overhangs the bar
-                        // without taking layout height, so the 68px bar never overflows.
+                        // Stack so the raised button overhangs without overflowing the bar.
                         child: Stack(
                           clipBehavior: Clip.none,
                           alignment: Alignment.topCenter,

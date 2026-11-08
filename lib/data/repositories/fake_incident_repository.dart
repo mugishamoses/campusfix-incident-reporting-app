@@ -5,8 +5,7 @@ import '../models/enums.dart';
 import '../models/incident.dart';
 import 'incident_repository.dart';
 
-/// In-memory, stream-based store mirroring Firestore's snapshot behaviour.
-/// shortcut: in-memory only, replaced by FirestoreIncidentRepository in Phase 4.
+/// In-memory store with Firestore-like streams, for tests and the offline demo.
 class FakeIncidentRepository implements IncidentRepository {
   FakeIncidentRepository({
     this.latency = const Duration(milliseconds: 500),

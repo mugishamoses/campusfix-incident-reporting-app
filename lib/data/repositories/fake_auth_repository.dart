@@ -4,8 +4,7 @@ import '../models/app_user.dart';
 import '../models/enums.dart';
 import 'auth_repository.dart';
 
-/// In-memory auth for UI development and tests.
-/// shortcut: no persistence, replaced by FirebaseAuthRepository in Phase 3.
+/// In-memory auth for tests and the offline demo.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({this.latency = const Duration(milliseconds: 700)});
 
