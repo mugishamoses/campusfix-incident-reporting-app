@@ -40,7 +40,10 @@ The graded build is still Android/iOS; the web target is for quick testing and d
 1. `firebase login` then `dart pub global activate flutterfire_cli && flutterfire configure`
 2. Console: enable Email/Password auth, Firestore, Storage (Blaze plan required for Storage).
 3. `firebase deploy --only firestore,storage`
-4. Promote a staff member: in Firestore, set `users/{uid}.role = "staff"`.
+4. Email links: Authentication → Templates → (any template) → ✏️ → **Customize action URL** →
+   `https://campusfix-alu-2026.web.app/auth/action` (our handler in `web/auth/action.html`; it doesn't
+   depend on the link's `apiKey`, which some SDKs send empty). Deploy it with `make web-deploy`.
+5. Promote a staff member: in Firestore, set `users/{uid}.role = "staff"`.
 
 ## Security
 See `firestore.rules` / `storage.rules`: campus-email + verified-email gate, students can only
